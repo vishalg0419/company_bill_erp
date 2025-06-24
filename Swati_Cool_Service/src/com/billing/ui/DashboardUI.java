@@ -125,6 +125,14 @@ public class DashboardUI extends JFrame {
         return new SimpleDateFormat("dd MMM yyyy - HH:mm:ss").format(new Date());
     }
 
+    
+    public void refreshTable() {
+        tableModel.setRowCount(0); // Clear old data
+        loadBillsFromDatabase();   // Reload data from DB
+    }
+
+    
+    
     private void loadBillsFromDatabase() {
         try (Connection conn = com.billing.DBConnection.getConnection()) {
             String query = "SELECT bill_id,bill_no, customer_name, bill_date, total_amount FROM bills ORDER BY bill_id DESC";
@@ -188,7 +196,7 @@ public class DashboardUI extends JFrame {
     		int billid = Integer.parseInt(tableModel.getValueAt(selectedRow, 0).toString());
 
     		if (action.equals("edit")) {
-    			JOptionPane.showMessageDialog(null, "Editing Bill No: " + billid);
+    			new EditBillUI(billid, DashboardUI.this);
     		} else if (action.equals("delete")) {
     			int confirm = JOptionPane.showConfirmDialog(null,
     					"Are you sure you want to delete bill #" + billid + "?", "Confirm Delete",
