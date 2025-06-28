@@ -5,6 +5,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
 import java.awt.*;
+import java.io.File;
 import java.sql.Connection;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -24,11 +25,12 @@ public class BillUI extends JFrame {
 	private DefaultTableModel tableModel;
 	private JLabel totalLabel;
 	private int totalAmount = 0;
+	boolean submitflag = false;
 
 	public BillUI() {
 		setTitle("Billing Application");
 		setSize(800, 900);
-		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setLocationRelativeTo(null);
 		setLayout(null); // Absolute layout
 
@@ -145,23 +147,30 @@ public class BillUI extends JFrame {
 		add(preparedBy);
 
 		// Bottom Buttons
+		JButton backBtn = new JButton("Home");
+		backBtn.setBounds(50, 770, 120, 35);
+		add(backBtn);
+
 		JButton clearBtn = new JButton("Clear");
-		clearBtn.setBounds(100, 770, 120, 35);
+		clearBtn.setBounds(230, 770, 120, 35);
 		add(clearBtn);
 
 		JButton submitBtn = new JButton("Submit");
-		submitBtn.setBounds(240, 770, 120, 35);
+		submitBtn.setBounds(390, 770, 120, 35);
 		add(submitBtn);
 
 		JButton pdfBtn = new JButton("Generate PDF");
-		pdfBtn.setBounds(380, 770, 140, 35);
+		pdfBtn.setBounds(550, 770, 140, 35);
 		add(pdfBtn);
 
-		JButton excelBtn = new JButton("Generate Excel");
-		excelBtn.setBounds(540, 770, 160, 35);
-		add(excelBtn);
 
 		setVisible(true);
+
+		backBtn.addActionListener(e -> {
+
+			dispose();
+
+		});
 
 		clearBtn.addActionListener(e -> {
 			int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to clear the form?",
@@ -179,100 +188,127 @@ public class BillUI extends JFrame {
 			}
 		});
 
-		submitBtn.addActionListener(e->{
+		submitBtn.addActionListener(e -> {
 			submit(submitBtn, billField, nameField, addressField, dateChooser);
+			dispose();
+		});
+
+		pdfBtn.addActionListener(e -> {
+			if (submitflag == true) {
+				// Re-generate PDF from the latest form data (if needed)
+				File filepath = PDFGenerator.generateBillPDF(billField.getText(), nameField.getText(),
+						addressField.getText(), new SimpleDateFormat("yyyy-MM-dd").format(dateChooser.getDate()),
+						totalAmount, tableModel);
+				PDFGenerator.openFile(filepath);
+				dispose();
+			} else {
+				int option = JOptionPane.showConfirmDialog(this,
+						"Bill not submitted yet.\nDo you want to submit it now?", "Submission Required",
+						JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+				if (option == JOptionPane.YES_OPTION) {
+					submit(submitBtn, billField, nameField, addressField, dateChooser);
+					if (submitflag == true) {
+						File filepath = PDFGenerator.generateBillPDF(billField.getText().trim(),
+								nameField.getText().trim(), addressField.getText().trim(),
+								new SimpleDateFormat("yyyy-MM-dd").format(dateChooser.getDate()), totalAmount,
+								tableModel);
+						PDFGenerator.openFile(filepath);
+						dispose();
+					}
+
+				}
+			}
 		});
 
 	}
 
-	private void submit(JButton submitBtn, JTextField billField, JTextField nameField, JTextField addressField, JDateChooser dateChooser) {
-	    if (nameField.getText().isEmpty() || addressField.getText().isEmpty()
-	            || dateChooser.getDate() == null || tableModel.getRowCount() == 0) {
-	        JOptionPane.showMessageDialog(this,
-	                "Please fill all fields and add at least one item before submitting.", "Warning",
-	                JOptionPane.WARNING_MESSAGE);
-	        return;
-	    }
+	private boolean submit(JButton submitBtn, JTextField billField, JTextField nameField, JTextField addressField,
+			JDateChooser dateChooser) {
+		if (submitflag == true) {
+			JOptionPane.showMessageDialog(this, "Bill has already submitted.", "Warning", JOptionPane.WARNING_MESSAGE);
+		} else {
+			if (nameField.getText().isEmpty() || addressField.getText().isEmpty() || dateChooser.getDate() == null
+					|| tableModel.getRowCount() == 0) {
+				JOptionPane.showMessageDialog(this,
+						"Please fill all fields and add at least one item before submitting.", "Warning",
+						JOptionPane.WARNING_MESSAGE);
+			}
 
-	    int billNo=1;
-	    try {
-	        billNo = Integer.parseInt(billField.getText());
-	    } catch (NumberFormatException e) {
-	       // JOptionPane.showMessageDialog(this, "Invalid Bill No. Please enter a valid number.", "Error", JOptionPane.ERROR_MESSAGE);
-	    }
+			int billNo = 0;
+			try {
+				billNo = Integer.parseInt(billField.getText());
+			} catch (NumberFormatException e) {
+				// JOptionPane.showMessageDialog(this, "Invalid Bill No. Please enter a valid
+				// number.", "Error", JOptionPane.ERROR_MESSAGE);
+			}
 
-	    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-	    String customerName = nameField.getText();
-	    String customerAddress = addressField.getText();
-	    String billDate = sdf.format(dateChooser.getDate());
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+			String customerName = nameField.getText();
+			String customerAddress = addressField.getText();
+			String billDate = sdf.format(dateChooser.getDate());
 
-	    StringBuilder summary = new StringBuilder();
-	    summary.append("Bill No: ").append(billNo).append("\nCustomer: ").append(customerName).append("\nAddress: ")
-	            .append(customerAddress).append("\nDate: ").append(billDate).append("\n\nItems:\n");
+			StringBuilder summary = new StringBuilder();
+			summary.append("Bill No: ").append(billNo).append("\nCustomer: ").append(customerName).append("\nAddress: ")
+					.append(customerAddress).append("\nDate: ").append(billDate).append("\n\nItems:\n");
 
-	    for (int i = 0; i < tableModel.getRowCount(); i++) {
-	        summary.append(tableModel.getValueAt(i, 1)).append(" - ₹").append(tableModel.getValueAt(i, 4))
-	                .append("\n");
-	    }
+			for (int i = 0; i < tableModel.getRowCount(); i++) {
+				summary.append(tableModel.getValueAt(i, 1)).append(" - ₹").append(tableModel.getValueAt(i, 4))
+						.append("\n");
+			}
 
-	    summary.append("\nTotal: ₹").append(totalAmount);
+			summary.append("\nTotal: ₹").append(totalAmount);
 
-	    int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit the bill?",
-	            "Confirm Submit", JOptionPane.YES_NO_OPTION);
+			int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit the bill?",
+					"Confirm Submit", JOptionPane.YES_NO_OPTION);
 
-	    if (confirm == JOptionPane.YES_OPTION) {
-	        try (Connection conn = DBConnection.getConnection()) {
-	            conn.setAutoCommit(false); // Begin transaction
+			if (confirm == JOptionPane.YES_OPTION) {
+				try (Connection conn = DBConnection.getConnection()) {
+					conn.setAutoCommit(false); // Begin transaction
 
-	            // Insert into `bills`
-	            String insertBillSQL = "INSERT INTO bills (bill_no, customer_name, customer_address, bill_date, total_amount) VALUES (?, ?, ?, ?, ?)";
-	            PreparedStatement psBill = conn.prepareStatement(insertBillSQL, Statement.RETURN_GENERATED_KEYS);
-	            psBill.setInt(1, billNo);
-	            psBill.setString(2, customerName);
-	            psBill.setString(3, customerAddress);
-	            psBill.setDate(4, java.sql.Date.valueOf(billDate));
-	            psBill.setInt(5, totalAmount);
-	            psBill.executeUpdate();
+					// Insert into `bills`
+					String insertBillSQL = "INSERT INTO bills (bill_no, customer_name, customer_address, bill_date, total_amount) VALUES (?, ?, ?, ?, ?)";
+					PreparedStatement psBill = conn.prepareStatement(insertBillSQL, Statement.RETURN_GENERATED_KEYS);
+					psBill.setInt(1, billNo);
+					psBill.setString(2, customerName);
+					psBill.setString(3, customerAddress);
+					psBill.setDate(4, java.sql.Date.valueOf(billDate));
+					psBill.setInt(5, totalAmount);
+					psBill.executeUpdate();
 
-	            ResultSet rs = psBill.getGeneratedKeys();
-	            rs.next();
-	            int billId = rs.getInt(1);
+					ResultSet rs = psBill.getGeneratedKeys();
+					rs.next();
+					int billId = rs.getInt(1);
 
-	            // Insert into `bill_items`
-	            String insertItemSQL = "INSERT INTO bill_items (bill_id, particulars, rate, quantity, amount) VALUES (?, ?, ?, ?, ?)";
-	            PreparedStatement psItem = conn.prepareStatement(insertItemSQL);
+					// Insert into `bill_items`
+					String insertItemSQL = "INSERT INTO bill_items (bill_id, particulars, rate, quantity, amount) VALUES (?, ?, ?, ?, ?)";
+					PreparedStatement psItem = conn.prepareStatement(insertItemSQL);
 
-	            for (int i = 0; i < tableModel.getRowCount(); i++) {
-	                psItem.setInt(1, billId);
-	                psItem.setString(2, tableModel.getValueAt(i, 1).toString());
-	                psItem.setInt(3, Integer.parseInt(tableModel.getValueAt(i, 2).toString()));
-	                psItem.setInt(4, Integer.parseInt(tableModel.getValueAt(i, 3).toString()));
-	                psItem.setInt(5, Integer.parseInt(tableModel.getValueAt(i, 4).toString()));
-	                psItem.addBatch();
-	            }
+					for (int i = 0; i < tableModel.getRowCount(); i++) {
+						psItem.setInt(1, billId);
+						psItem.setString(2, tableModel.getValueAt(i, 1).toString());
+						psItem.setInt(3, Integer.parseInt(tableModel.getValueAt(i, 2).toString()));
+						psItem.setInt(4, Integer.parseInt(tableModel.getValueAt(i, 3).toString()));
+						psItem.setInt(5, Integer.parseInt(tableModel.getValueAt(i, 4).toString()));
+						psItem.addBatch();
+					}
 
-	            psItem.executeBatch();
-	            conn.commit();
+					psItem.executeBatch();
+					conn.commit();
 
-	            JOptionPane.showMessageDialog(this, "Bill submitted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-	        } catch (Exception ex) {
-	            ex.printStackTrace();
-	            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-	        }
-	    }
-	    
-	    PDFGenerator.generateBillPDF(
-	    	    String.valueOf(billNo),
-	    	    customerName,
-	    	    customerAddress,
-	    	    billDate,
-	    	    totalAmount,
-	    	    tableModel
-	    	);
+					JOptionPane.showMessageDialog(this, "Bill submitted successfully!", "Success",
+							JOptionPane.INFORMATION_MESSAGE);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			submitflag = true;
+		}
+		return submitflag;
 
 	}
 
-	
 	private void showItemDialog() {
 		JTextField particulars = new JTextField();
 		JTextField rate = new JTextField();

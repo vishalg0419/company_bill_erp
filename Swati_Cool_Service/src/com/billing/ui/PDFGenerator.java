@@ -4,6 +4,9 @@ import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.awt.Desktop;
@@ -12,198 +15,244 @@ import java.io.IOException;
 
 public class PDFGenerator {
 
-    public static void generateBillPDF(String billNo, String customerName, String customerAddress,
-                                       String billDate, int totalAmount, TableModel tableModel) {
-        PDDocument document = new PDDocument();
-        PDPage page = new PDPage(PDRectangle.A4);
-        document.addPage(page);
-        PDPageContentStream content = null;
-        
-        try {
-            content = new PDPageContentStream(document, page);
+	public static File generateBillPDF(String billNo, String customerName, String customerAddress, String billDate,
+			int totalAmount, TableModel tableModel) {
+		PDDocument document = new PDDocument();
+		PDPage page = new PDPage(PDRectangle.A4);
+		document.addPage(page);
+		PDPageContentStream content = null;
+		String filepath = null;
+		File file = null;
 
-            float margin = 50;
-            float y = 800;
-            float lineHeight = 20;
-            float startX = margin;
+		try {
+			content = new PDPageContentStream(document, page);
 
-            PDType1Font fontBold = PDType1Font.HELVETICA_BOLD;
-            PDType1Font fontNormal = PDType1Font.HELVETICA;
+			float margin = 50;
+			float y = 800;
+			float lineHeight = 20;
+			float startX = margin;
+			
 
-            // COMPANY HEADER
-            content.setFont(fontBold, 16);
-            drawCenteredText(content, "SWATI COOL SERVICES", y);
+			PDType1Font fontBold = PDType1Font.HELVETICA_BOLD;
+			PDType1Font fontNormal = PDType1Font.HELVETICA;
 
-            y -= 20;
-            content.setFont(fontNormal, 12);
-            drawCenteredText(content, "WINDOWS & SPLIT AIRCONDITIONERS MAINTENANCE & SERVICES", y);
+			// COMPANY HEADER
+			content.setFont(fontBold, 16);
+			drawCenteredText(content, "SWATI COOL SERVICES", y);
 
-            y -= 15;
-            drawCenteredText(content, "Pandit Lal Tiwari Road, Durga Chawl, Sanjay Nagar, Kandivali(W), Mumbai-400 067.", y);
+			y -= 20;
+			content.setFont(fontNormal, 12);
+			drawCenteredText(content, "WINDOWS & SPLIT AIRCONDITIONERS MAINTENANCE & SERVICES", y);
 
-            y -= 20;
-            drawLine(content, margin, y, 550, y);
+			y -= 15;
+			drawCenteredText(content,
+					"Pandit Lal Tiwari Road, Durga Chawl, Sanjay Nagar, Kandivali(W), Mumbai-400 067.", y);
 
-            // CUSTOMER DETAILS
-            y -= 25;
-            content.setFont(fontNormal, 11);
-            drawText(content, "Bill NO.: " + billNo, startX, y);
-            drawText(content, "Dated: " + billDate, 430, y);
+			y -= 20;
+			drawLine(content, margin, y, 550, y);
 
-            y -= lineHeight;
-            drawText(content, "MR./MRS.: " + customerName, startX, y);
+			// CUSTOMER DETAILS
+			y -= 25;
+			content.setFont(fontNormal, 11);
+			drawText(content, "Bill NO.: " + billNo, startX, y);
+			drawText(content, "Dated: " + billDate, 430, y);
 
-            y -= lineHeight;
-            drawText(content, "CUSTOMER ADDRESS:", startX, y);
+			y -= lineHeight;
+			drawText(content, "MR./MRS.: " + customerName, startX, y);
 
-            y -= lineHeight;
-            drawText(content, customerAddress, startX + 20, y);
+			y -= lineHeight;
+			drawText(content, "CUSTOMER ADDRESS:", startX, y);
 
-            // BILL TITLE
-            y -= 30;
-            content.setFont(fontBold, 14);
-            drawCenteredText(content, "BILL", y);
+			y -= lineHeight;
+			drawText(content, customerAddress, startX + 20, y);
 
-            // TABLE HEADER
-            y -= 15;
-            float tableStartY = y;
-            float tableWidth = 500;
-            float[] colWidths = {50, 220, 70, 60, 100};
-            float rowHeight = 20;
+			// BILL TITLE
+			y -= 30;
+			content.setFont(fontBold, 14);
+			drawCenteredText(content, "BILL", y);
 
-            float currentY = tableStartY;
+			// TABLE HEADER
+			y -= 15;
+			float tableStartY = y;
+			float tableWidth = 500;
+			float[] colWidths = { 50, 220, 70, 60, 100 };
+			float rowHeight = 20;
 
-            // Draw outer border and columns (1st page only)
-            float tableHeight = rowHeight * (tableModel.getRowCount() + 2);
-            drawOuterTableBorder(content, startX, currentY, tableWidth, tableHeight);
-            drawColumnLines(content, startX, currentY, tableHeight, colWidths);
+			float currentY = tableStartY;
 
-            content.setFont(fontBold, 11);
-            drawRow(content, currentY, startX,
-                    new String[]{"SR.NO.", "PARTICULARS", "RATE", "QTY", "AMOUNT"},
-                    colWidths);
+			// Draw outer border and columns (1st page only)
+			float tableHeight = rowHeight * (tableModel.getRowCount() + 2);
+			drawOuterTableBorder(content, startX, currentY, tableWidth, tableHeight);
+			drawColumnLines(content, startX, currentY, tableHeight, colWidths);
 
-            content.setFont(fontNormal, 11);
-            currentY -= rowHeight;
+			content.setFont(fontBold, 11);
+			drawRow(content, currentY, startX, new String[] { "SR.NO.", "PARTICULARS", "RATE", "QTY", "AMOUNT" },
+					colWidths);
 
-            for (int i = 0; i < tableModel.getRowCount(); i++) {
-                if (currentY < 100) {
-                    content.close();
+			content.setFont(fontNormal, 11);
+			currentY -= rowHeight;
 
-                    page = new PDPage(PDRectangle.A4);
-                    document.addPage(page);
-                    content = new PDPageContentStream(document, page);
-                    currentY = 750;
+			for (int i = 0; i < tableModel.getRowCount(); i++) {
+				if (currentY < 100) {
+					content.close();
 
-                    // Re-draw table header
-                    content.setFont(fontBold, 11);
-                    drawRow(content, currentY, startX,
-                            new String[]{"SR.NO.", "PARTICULARS", "RATE", "QTY", "AMOUNT"},
-                            colWidths);
+					page = new PDPage(PDRectangle.A4);
+					document.addPage(page);
+					content = new PDPageContentStream(document, page);
+					currentY = 750;
 
-                    currentY -= rowHeight;
-                    drawColumnLines(content, startX, currentY + rowHeight, rowHeight * (tableModel.getRowCount() - i + 2), colWidths);
-                }
+					// Re-draw table header
+					content.setFont(fontBold, 11);
+					drawRow(content, currentY, startX,
+							new String[] { "SR.NO.", "PARTICULARS", "RATE", "QTY", "AMOUNT" }, colWidths);
 
-                String sr = tableModel.getValueAt(i, 0).toString();
-                String part = tableModel.getValueAt(i, 1).toString();
-                String rate = tableModel.getValueAt(i, 2).toString();
-                String qty = tableModel.getValueAt(i, 3).toString();
-                String amt = tableModel.getValueAt(i, 4).toString();
+					currentY -= rowHeight;
+					drawColumnLines(content, startX, currentY + rowHeight,
+							rowHeight * (tableModel.getRowCount() - i + 2), colWidths);
+				}
 
-                drawRow(content, currentY, startX,
-                        new String[]{sr, part, rate, qty, amt},
-                        colWidths);
-                currentY -= rowHeight;
-            }
+				String sr = tableModel.getValueAt(i, 0).toString();
+				String part = tableModel.getValueAt(i, 1).toString();
+				String rate = tableModel.getValueAt(i, 2).toString();
+				String qty = tableModel.getValueAt(i, 3).toString();
+				String amt = tableModel.getValueAt(i, 4).toString();
 
-            // Total Row
-            content.setFont(fontBold, 11);
-            drawRow(content, currentY, startX,
-                    new String[]{"", "TOTAL", "", "", "Rs. " + totalAmount},
-                    colWidths);
+				drawRow(content, currentY, startX, new String[] { sr, part, rate, qty, amt }, colWidths);
+				currentY -= rowHeight;
+			}
 
-            currentY -= 40;
-            content.setFont(fontNormal, 11);
-            drawText(content, "Receiver's Signature: ____________________________", startX, currentY);
-            currentY -= 20;
-            drawText(content, "Prepared by: RAM SAHAY GUPTA", startX, currentY);
+			// Total Row
+			content.setFont(fontBold, 11);
+			drawRow(content, currentY, startX, new String[] { "", "TOTAL", "", "", "Rs. " + totalAmount }, colWidths);
 
-            content.close();
+			currentY -= 40;
+			content.setFont(fontNormal, 11);
+			drawText(content, "Receiver's Signature: ____________________________", startX, currentY);
+			currentY -= 20;
+			drawText(content, "Prepared by: RAM SAHAY GUPTA", startX, currentY);
 
-            String filePath = "C:/Users/Vishal/Desktop/Bill_" + billNo + ".pdf";
-            document.save(filePath);
-            System.out.println("PDF generated successfully at: " + filePath);
-            Desktop.getDesktop().open(new File(filePath));
+			content.close();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                document.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    private static void drawText(PDPageContentStream content, String text, float x, float y) throws IOException {
-        content.beginText();
-        content.newLineAtOffset(x, y);
-        content.showText(text);
-        content.endText();
-    }
+			/* === Ask user where to save === */
+			JFileChooser chooser = new JFileChooser();
+			chooser.setDialogTitle("Save Bill PDF");
+			chooser.setSelectedFile(new File("Bill_" + billNo + ".pdf"));
+			chooser.setFileFilter(new FileNameExtensionFilter("PDF documents (*.pdf)", "pdf"));
 
-    private static void drawCenteredText(PDPageContentStream content, String text, float y) throws IOException {
-        float textWidth = PDType1Font.HELVETICA.getStringWidth(text) / 1000 * 12;
-        float x = (PDRectangle.A4.getWidth() - textWidth) / 2;
-        drawText(content, text, x, y);
-    }
+			int userChoice = chooser.showSaveDialog(null);          // parent == null: center‑screen
+			if (userChoice != JFileChooser.APPROVE_OPTION) {
+			    // user pressed Cancel or closed dialog
+			    content.close();
+			    document.close();
+			    return null;
+			}
 
-    private static void drawRow(PDPageContentStream content, float y, float xStart, String[] columns, float[] widths) throws IOException {
-        float x = xStart;
-        for (int i = 0; i < columns.length; i++) {
-            drawText(content, columns[i], x + 2, y - 12);
-            x += widths[i];
-        }
-    }
+			file = chooser.getSelectedFile();
 
-    private static void drawLine(PDPageContentStream cs, float x1, float y1, float x2, float y2) throws IOException {
-        cs.moveTo(x1, y1);
-        cs.lineTo(x2, y2);
-        cs.stroke();
-    }
+			// ensure .pdf extension
+			if (!file.getName().toLowerCase().endsWith(".pdf")) {
+			    file = new File(file.getParentFile(), file.getName() + ".pdf");
+			}
+			JOptionPane.showMessageDialog(
+				    null,  // Use your parent JFrame instance if available instead of null
+				    "PDF was saved at:\n" + file.getAbsolutePath(),
+				    "PDF Saved",
+				    JOptionPane.INFORMATION_MESSAGE
+				);
 
-    private static void drawOuterTableBorder(PDPageContentStream cs, float x, float y, float width, float height) throws IOException {
-        cs.setLineWidth(1.2f);
-        cs.addRect(x, y - height, width, height);
-        cs.stroke();
-    }
+			document.save(file);
+			System.out.println("PDF generated successfully at: " + file.getAbsolutePath());
 
-    private static void drawColumnLines(PDPageContentStream cs, float x, float y, float height, float[] widths) throws IOException {
-        // Draw vertical lines
-        cs.setLineWidth(0.5f);
-        float xPos = x;
-        for (float w : widths) {
-            cs.moveTo(xPos, y);
-            cs.lineTo(xPos, y - height);
-            xPos += w;
-        }
-        cs.moveTo(xPos, y);
-        cs.lineTo(xPos, y - height);
-        cs.stroke();
+			System.out.println("PDF generated successfully at: " + filepath);
 
-        // Draw horizontal lines
-        int totalRows = (int) (height / 20);
-        for (int i = 1; i <= totalRows; i++) {
-            float yLine = y - (i * 20);
-            if (i == 1 || i == totalRows - 1) {
-                cs.setLineWidth(1.2f); // Bold line below header and above total
-            } else {
-                cs.setLineWidth(0.5f); // Normal inner lines
-            }
-            cs.moveTo(x, yLine);
-            cs.lineTo(x + 500, yLine);
-            cs.stroke();
-        }
-    }
+		
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				document.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		return file;
+	}
+
+	public static void openFile(File filepath) {
+		try {
+			if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+				Desktop.getDesktop().open(filepath);
+			} else {
+				System.out.println("Open action not supported on this system.");
+			}
+		} catch (IOException e) {
+			System.out.println("Failed to open file: " + e.getMessage());
+		}
+	}
+
+	private static void drawText(PDPageContentStream content, String text, float x, float y) throws IOException {
+		content.beginText();
+		content.newLineAtOffset(x, y);
+		content.showText(text);
+		content.endText();
+	}
+
+	private static void drawCenteredText(PDPageContentStream content, String text, float y) throws IOException {
+		float textWidth = PDType1Font.HELVETICA.getStringWidth(text) / 1000 * 12;
+		float x = (PDRectangle.A4.getWidth() - textWidth) / 2;
+		drawText(content, text, x, y);
+	}
+
+	private static void drawRow(PDPageContentStream content, float y, float xStart, String[] columns, float[] widths)
+			throws IOException {
+		float x = xStart;
+		for (int i = 0; i < columns.length; i++) {
+			drawText(content, columns[i], x + 2, y - 12);
+			x += widths[i];
+		}
+	}
+
+	private static void drawLine(PDPageContentStream cs, float x1, float y1, float x2, float y2) throws IOException {
+		cs.moveTo(x1, y1);
+		cs.lineTo(x2, y2);
+		cs.stroke();
+	}
+
+	private static void drawOuterTableBorder(PDPageContentStream cs, float x, float y, float width, float height)
+			throws IOException {
+		cs.setLineWidth(1.2f);
+		cs.addRect(x, y - height, width, height);
+		cs.stroke();
+	}
+
+	private static void drawColumnLines(PDPageContentStream cs, float x, float y, float height, float[] widths)
+			throws IOException {
+		// Draw vertical lines
+		cs.setLineWidth(0.5f);
+		float xPos = x;
+		for (float w : widths) {
+			cs.moveTo(xPos, y);
+			cs.lineTo(xPos, y - height);
+			xPos += w;
+		}
+		cs.moveTo(xPos, y);
+		cs.lineTo(xPos, y - height);
+		cs.stroke();
+
+		// Draw horizontal lines
+		int totalRows = (int) (height / 20);
+		for (int i = 1; i <= totalRows; i++) {
+			float yLine = y - (i * 20);
+			if (i == 1 || i == totalRows - 1) {
+				cs.setLineWidth(1.2f); // Bold line below header and above total
+			} else {
+				cs.setLineWidth(0.5f); // Normal inner lines
+			}
+			cs.moveTo(x, yLine);
+			cs.lineTo(x + 500, yLine);
+			cs.stroke();
+		}
+	}
 }
